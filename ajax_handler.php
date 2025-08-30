@@ -249,7 +249,7 @@ try {
                 // MySQL evaluates SET clauses left to right, so later expressions see updated column values
                 $updateBudgetQuery = "UPDATE budget_data SET 
                     actual = COALESCE(actual, 0) + ?,
-                    forecast = COALESCE(budget, 0) - (COALESCE(actual, 0) + ?),
+                    forecast = GREATEST(COALESCE(budget, 0) - COALESCE(actual, 0), 0),
                     actual_plus_forecast = COALESCE(actual, 0) + COALESCE(forecast, 0)
                     WHERE year2 = ? AND category_name = ? AND period_name = ?
                     AND ? BETWEEN start_date AND end_date";
@@ -258,12 +258,12 @@ try {
                 if ($userCluster) {
                     $updateBudgetQuery .= " AND cluster = ?";
                     $updateStmt = $conn->prepare($updateBudgetQuery);
-                    // Params: 1 double (amount), 1 double (amount), 1 integer (year), 3 strings (categoryName, quarter, transactionDate), 1 string (userCluster)
-                    $updateStmt->bind_param("ddissss", $amount, $amount, $year, $categoryName, $quarter, $transactionDate, $userCluster);
+                    // Params: 1 double (amount), 1 integer (year), 4 strings (categoryName, quarter, transactionDate, userCluster)
+                    $updateStmt->bind_param("dissss", $amount, $year, $categoryName, $quarter, $transactionDate, $userCluster);
                 } else {
                     $updateStmt = $conn->prepare($updateBudgetQuery);
-                    // Params: 1 double (amount), 1 double (amount), 1 integer (year), 3 strings (categoryName, quarter, transactionDate)
-                    $updateStmt->bind_param("ddisss", $amount, $amount, $year, $categoryName, $quarter, $transactionDate);
+                    // Params: 1 double (amount), 1 integer (year), 3 strings (categoryName, quarter, transactionDate)
+                    $updateStmt->bind_param("disss", $amount, $year, $categoryName, $quarter, $transactionDate);
                 }
                 
                 if ($updateStmt->execute()) {
