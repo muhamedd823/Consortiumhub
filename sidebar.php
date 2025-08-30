@@ -1,0 +1,93 @@
+<!-- Sidebar -->
+<aside id="sidebar"
+    class="sidebar-fixed fixed inset-y-0 left-0 z-30 bg-gradient-to-b from-primary-800 to-primary-900 text-white transform -translate-x-full transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 rounded-br-xl shadow-xl">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-center h-20 bg-primary-900 rounded-br-xl shadow-md">
+        <h1 class="text-2xl font-bold tracking-wide">Consortium Hub</h1>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 px-4 py-6 space-y-2 mt-4">
+        
+        <!-- Upload Report -->
+        <a href="upload_report_section.php"
+            class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+            <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"/>
+            </svg>
+            <span class="group-hover:text-white">Upload Report</span>
+        </a>
+
+        <!-- Report Times -->
+        <a href="report_times_section.php"
+            class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+            <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="group-hover:text-white">Report Times</span>
+        </a>
+
+        <!-- Financial Report -->
+        <a href="financial_report_section.php"
+            class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+            <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10v1m0 10v1m-6-9h12"/>
+            </svg>
+            <span class="group-hover:text-white">Financial Report</span>
+        </a>
+
+        <!-- Forecast -->
+        <a href="forecast_budget_table.php"
+            class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+            <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 17v-2m3 2v-4m3 4v-6M4 21h16"/>
+            </svg>
+            <span class="group-hover:text-white">Forecast</span>
+        </a>
+
+        <!-- Admin Section - Only visible to admins -->
+        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+        <div class="mt-6 pt-4 border-t border-primary-700">
+            <p class="px-4 mb-2 text-xs font-semibold text-primary-300 uppercase tracking-wider">Administration</p>
+            
+            <!-- Admin - Predefined Fields -->
+            <a href="admin_predefined_fields.php"
+                class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+                <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span class="group-hover:text-white">Predefined Fields</span>
+            </a>
+            
+            <!-- Admin - Budget Management -->
+            <a href="admin_budget_management.php"
+                class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+                <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <span class="group-hover:text-white">Budget Management</span>
+            </a>
+        </div>
+        <?php endif; ?>
+    </nav>
+
+    <!-- User Section -->
+    <div class="absolute bottom-0 w-full p-4 border-t border-primary-700">
+        <div class="flex items-center px-2 py-3">
+            <img class="w-10 h-10 rounded-full border-2 border-primary-600"
+                src="https://placehold.co/40x40/1e40af/ffffff?text=JD" alt="User Avatar">
+            <div class="ml-3">
+                <p class="text-sm font-medium text-white">John Doe</p>
+                <p class="text-xs text-primary-300">Administrator</p>
+            </div>
+        </div>
+    </div>
+</aside>
