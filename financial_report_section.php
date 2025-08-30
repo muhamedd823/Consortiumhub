@@ -19,15 +19,21 @@ $currentYear = date('Y');
 // Get user cluster information
 $userCluster = $_SESSION['cluster_name'] ?? null;
 
-// Calculate total spent from Budget_Preview table (filtered by cluster if available)
+// Define last 4 months date range (current month and previous 3 months)
+$endDate = date('Y-m-d');
+$startDate = date('Y-m-01', strtotime('-3 months'));
+$startMonthName = date('F', strtotime($startDate));
+$endMonthName = date('F', strtotime($endDate));
+
+// Calculate total spent and transactions in the last 4 months (filtered by cluster if available)
 if ($userCluster) {
-    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE YEAR(EntryDate) = ? AND cluster = ?";
+    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE EntryDate BETWEEN ? AND ? AND cluster = ?";
     $stmt = $conn->prepare($totalSpentQuery);
-    $stmt->bind_param("is", $currentYear, $userCluster);
+    $stmt->bind_param("sss", $startDate, $endDate, $userCluster);
 } else {
-    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE YEAR(EntryDate) = ?";
+    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE EntryDate BETWEEN ? AND ?";
     $stmt = $conn->prepare($totalSpentQuery);
-    $stmt->bind_param("i", $currentYear);
+    $stmt->bind_param("ss", $startDate, $endDate);
 }
 $stmt->execute();
 $spentResult = $stmt->get_result();
@@ -1180,8 +1186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         </div>
                         <div class="metric-change">
                             <div class="metric-change-text">
-                             
-                                <span> from <?php echo date('F', strtotime('-1 month')); ?> to <?php echo date('F'); ?></span>
+                                <span>from <?php echo $startMonthName; ?> to <?php echo $endMonthName; ?></span>
                             </div>
                         </div>
                     </div>
@@ -1200,33 +1205,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         </div>
                         <div class="metric-change">
                             <div class="metric-change-text">
-                               
-                                <span>from <?php echo date('F', strtotime('-1 month')); ?> to <?php echo date('F'); ?></span>
+                                <span>from <?php echo $startMonthName; ?> to <?php echo $endMonthName; ?></span>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-card-content">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <p class="metric-label">Budget Utilization</p>
-                                <h3 class="metric-value"><?php echo number_format($budgetUtilization, 0); ?>%</h3>
-                            </div>
-                            <div class="metric-icon bg-purple-100 text-purple-600">
-                                <i class="fas fa-chart-pie"></i>
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: <?php echo min($budgetUtilization, 100); ?>%"></div>
-                        </div>
-                        <div class="progress-info">
-                            <span class="progress-text"><i class="fas fa-money-bill-wave text-green-600 mr-1"></i><?php echo number_format($remainingBudget, 0); ?> remaining</span>
-                            <span class="progress-percentage"><?php echo number_format($budgetUtilization, 1); ?>% used</span>
-                        </div>
-                    </div>
-                </div>
+                <!-- Budget Utilization card removed per request -->
             </div>
         </div>
 
