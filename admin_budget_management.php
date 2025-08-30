@@ -2189,19 +2189,29 @@ $total_budget_preview_pages = ceil($total_budget_preview_records / $records_per_
     <script>
         // Tab switching
         function switchTab(tabName, el) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            const target = document.getElementById(tabName + '-tab');
+            var contents = document.querySelectorAll('.tab-content');
+            for (var i = 0; i < contents.length; i++) contents[i].classList.remove('active');
+            var tabs = document.querySelectorAll('.tabs .tab');
+            for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
+            var target = document.getElementById(tabName + '-tab');
             if (target) target.classList.add('active');
             if (el) el.classList.add('active');
         }
 
         // Delegate clicks to support dynamic rendering and avoid inline event reliance
         document.addEventListener('click', function(e) {
-            const t = e.target.closest('.tab[data-tab-target]');
+            var t = e.target.closest && e.target.closest('.tab[data-tab-target]');
             if (!t) return;
-            const tabName = t.getAttribute('data-tab-target');
+            var tabName = t.getAttribute('data-tab-target');
+            if (!tabName) return;
             switchTab(tabName, t);
+        });
+
+        // Ensure initial state is correct on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            var active = document.querySelector('.tabs .tab.active');
+            var name = active && active.getAttribute('data-tab-target');
+            if (name) switchTab(name, active);
         });
         
         // Modal functions for Budget Data
