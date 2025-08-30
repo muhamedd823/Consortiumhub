@@ -787,8 +787,8 @@ $total_budget_preview_pages = ceil($total_budget_preview_records / $records_per_
                 <!-- Tabs -->
                 <div class="admin-card p-6">
                     <div class="tabs">
-                        <div class="tab active" onclick="switchTab('budget-data', this)">Budget Data</div>
-                        <div class="tab" onclick="switchTab('budget-preview', this)">Budget Preview</div>
+                        <div class="tab active" data-tab-target="budget-data">Budget Data</div>
+                        <div class="tab" data-tab-target="budget-preview">Budget Preview</div>
                     </div>
                     
                     <!-- Budget Data Tab -->
@@ -2189,24 +2189,20 @@ $total_budget_preview_pages = ceil($total_budget_preview_records / $records_per_
     <script>
         // Tab switching
         function switchTab(tabName, el) {
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show selected tab content
-            document.getElementById(tabName + '-tab').classList.add('active');
-            
-            // Add active class to clicked tab
-            if (el) {
-                el.classList.add('active');
-            }
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            const target = document.getElementById(tabName + '-tab');
+            if (target) target.classList.add('active');
+            if (el) el.classList.add('active');
         }
+
+        // Delegate clicks to support dynamic rendering and avoid inline event reliance
+        document.addEventListener('click', function(e) {
+            const t = e.target.closest('.tab[data-tab-target]');
+            if (!t) return;
+            const tabName = t.getAttribute('data-tab-target');
+            switchTab(tabName, t);
+        });
         
         // Modal functions for Budget Data
         function openAddBudgetDataModal() {
