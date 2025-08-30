@@ -787,8 +787,8 @@ $total_budget_preview_pages = ceil($total_budget_preview_records / $records_per_
                 <!-- Tabs -->
                 <div class="admin-card p-6">
                     <div class="tabs">
-                        <div class="tab active" onclick="switchTab('budget-data')">Budget Data</div>
-                        <div class="tab" onclick="switchTab('budget-preview')">Budget Preview</div>
+                        <div class="tab active" onclick="switchTab('budget-data', this)">Budget Data</div>
+                        <div class="tab" onclick="switchTab('budget-preview', this)">Budget Preview</div>
                     </div>
                     
                     <!-- Budget Data Tab -->
@@ -2188,7 +2188,7 @@ $total_budget_preview_pages = ceil($total_budget_preview_records / $records_per_
     
     <script>
         // Tab switching
-        function switchTab(tabName) {
+        function switchTab(tabName, el) {
             // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -2203,7 +2203,9 @@ $total_budget_preview_pages = ceil($total_budget_preview_records / $records_per_
             document.getElementById(tabName + '-tab').classList.add('active');
             
             // Add active class to clicked tab
-            event.target.classList.add('active');
+            if (el) {
+                el.classList.add('active');
+            }
         }
         
         // Modal functions for Budget Data
