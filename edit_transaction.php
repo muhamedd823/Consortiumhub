@@ -605,17 +605,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // Update the budget_preview table with calculated values
-        // Get the budget_id if we don't have it yet
+        // Update the budget_preview table from the post-edit budget_data snapshot
+        // Ensure we have the current budget_id for the updated category/period/date
         if (!$budgetId) {
-            // Find the correct budget_id based on category, quarter, and year
             $entryDateTime = new DateTime($entryDate);
             $entryYear = (int)$entryDateTime->format('Y');
-            
+
             $budgetIdQuery = "SELECT id FROM budget_data 
                              WHERE year2 = ? AND category_name = ? AND period_name = ? 
                              AND ? BETWEEN start_date AND end_date";
-            
+
             if ($cluster) {
                 $budgetIdQuery .= " AND cluster = ?";
                 $budgetIdStmt = $conn->prepare($budgetIdQuery);
@@ -624,39 +623,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $budgetIdStmt = $conn->prepare($budgetIdQuery);
                 $budgetIdStmt->bind_param("isss", $entryYear, $categoryName, $quarterPeriod, $entryDate);
             }
-            
+
             $budgetIdStmt->execute();
-            $budgetIdResult = $budgetIdStmt->get_result();
-            $budgetIdData = $budgetIdResult->fetch_assoc();
+            $budgetIdResult = $conn->error ? null : $budgetIdStmt->get_result();
+            $budgetIdData = $budgetIdResult ? $budgetIdResult->fetch_assoc() : null;
             $budgetId = $budgetIdData['id'] ?? null;
         }
-        
-        // Get the original budget value for this quarter
+
         $originalBudgetValue = 0;
+        $newActualSpent = 0;
+        $newForecastAmount = 0;
         if ($budgetId) {
-            $budgetQuery = "SELECT budget FROM budget_data WHERE id = ?";
-            $budgetStmt = $conn->prepare($budgetQuery);
-            $budgetStmt->bind_param("i", $budgetId);
-            $budgetStmt->execute();
-            $budgetResult = $budgetStmt->get_result();
-            $budgetRow = $budgetResult->fetch_assoc();
-            $originalBudgetValue = $budgetRow['budget'] ?? 0;
+            $snapshotQuery = "SELECT budget, actual, forecast FROM budget_data WHERE id = ?";
+            $snapshotStmt = $conn->prepare($snapshotQuery);
+            $snapshotStmt->bind_param("i", $budgetId);
+            $snapshotStmt->execute();
+            $snapshotResult = $snapshotStmt->get_result();
+            $snapshot = $snapshotResult->fetch_assoc();
+            $originalBudgetValue = (float)($snapshot['budget'] ?? 0);
+            $newActualSpent = (float)($snapshot['actual'] ?? 0);
+            $newForecastAmount = (float)max(0, $snapshot['forecast'] ?? 0);
         }
-        
-        // Calculate the new values for budget_preview table
-        $newActualSpent = $originalData['ActualSpent'] ?? 0;
-        // Calculate the new actual spent after the amount difference
-        $newActualSpent = $newActualSpent - $originalAmount + $amount;
-        // Calculate forecast amount - this should be the remaining budget after actual spending
-        $newForecastAmount = max(0, $originalBudgetValue - $newActualSpent);
-        // Remaining budget should be the same as forecast (what's left to spend)
+
         $newRemainingBudget = $newForecastAmount;
-        
-        // Calculate variance percentage for budget_preview table
-        // Since Actual + Forecast = Budget, variance should be 0 for proper budget management
         $newVariancePercentage = 0;
-        
-        // Update the budget_preview table with calculated values
+
         $updatePreviewQuery = "UPDATE budget_preview SET 
             OriginalBudget = ?,
             RemainingBudget = ?,
@@ -665,7 +656,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VariancePercentage = ?
             WHERE PreviewID = ?";
         $updatePreviewStmt = $conn->prepare($updatePreviewQuery);
-        $updatePreviewStmt->bind_param("dddddi", 
+        $updatePreviewStmt->bind_param("dddddi",
             $originalBudgetValue,
             $newRemainingBudget,
             $newActualSpent,
@@ -1086,25 +1077,7 @@ include 'header.php';
                             <input type="text" id="category_name" name="category_name" class="form-input" value="<?php echo htmlspecialchars($transaction['CategoryName'] ?? ''); ?>" required>
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label" for="original_budget">Original Budget</label>
-                            <input type="number" step="0.01" id="original_budget" name="original_budget" class="form-input" value="<?php echo htmlspecialchars($transaction['OriginalBudget'] ?? 0); ?>">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label" for="remaining_budget">Remaining Budget</label>
-                            <input type="number" step="0.01" id="remaining_budget" name="remaining_budget" class="form-input" value="<?php echo htmlspecialchars($transaction['RemainingBudget'] ?? 0); ?>">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label" for="actual_spent">Actual Spent</label>
-                            <input type="number" step="0.01" id="actual_spent" name="actual_spent" class="form-input" value="<?php echo htmlspecialchars($transaction['ActualSpent'] ?? 0); ?>">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label" for="forecast_amount">Forecast Amount</label>
-                            <input type="number" step="0.01" id="forecast_amount" name="forecast_amount" class="form-input" value="<?php echo htmlspecialchars($transaction['ForecastAmount'] ?? 0); ?>">
-                        </div>
+                        <!-- Calculated fields removed from manual editing: Original Budget, Remaining Budget, Actual Spent, Forecast Amount -->
                         
                         <div class="form-group">
                             <label class="form-label" for="cluster">Cluster</label>
