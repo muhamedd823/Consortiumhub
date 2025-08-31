@@ -19,21 +19,15 @@ $currentYear = date('Y');
 // Get user cluster information
 $userCluster = $_SESSION['cluster_name'] ?? null;
 
-// Define last 4 months date range (current month and previous 3 months)
-$endDate = date('Y-m-d');
-$startDate = date('Y-m-01', strtotime('-3 months'));
-$startMonthName = date('F', strtotime($startDate));
-$endMonthName = date('F', strtotime($endDate));
-
-// Calculate total spent and transactions in the last 4 months (filtered by cluster if available)
+// Calculate total spent from Budget_Preview table (filtered by cluster if available)
 if ($userCluster) {
-    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE EntryDate BETWEEN ? AND ? AND cluster = ?";
+    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE YEAR(EntryDate) = ? AND cluster = ?";
     $stmt = $conn->prepare($totalSpentQuery);
-    $stmt->bind_param("sss", $startDate, $endDate, $userCluster);
+    $stmt->bind_param("is", $currentYear, $userCluster);
 } else {
-    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE EntryDate BETWEEN ? AND ?";
+    $totalSpentQuery = "SELECT SUM(Amount) as total_spent, COUNT(*) as transaction_count FROM budget_preview WHERE YEAR(EntryDate) = ?";
     $stmt = $conn->prepare($totalSpentQuery);
-    $stmt->bind_param("ss", $startDate, $endDate);
+    $stmt->bind_param("i", $currentYear);
 }
 $stmt->execute();
 $spentResult = $stmt->get_result();
@@ -41,11 +35,14 @@ $spentData = $spentResult->fetch_assoc();
 $totalSpent = $spentData['total_spent'] ?? 0;
 $transactionCount = $spentData['transaction_count'] ?? 0;
 
-// Calculate previous month data for comparison
+// Calculate data for the past 4 months
 $currentMonth = date('Y-m');
-$prevMonth = date('Y-m', strtotime('-1 month'));
+$prevMonth1 = date('Y-m', strtotime('-1 month'));
+$prevMonth2 = date('Y-m', strtotime('-2 months'));
+$prevMonth3 = date('Y-m', strtotime('-3 months'));
 
 if ($userCluster) {
+    // Current month data
     $currentMonthQuery = "SELECT SUM(Amount) as current_spent, COUNT(*) as current_count FROM budget_preview WHERE DATE_FORMAT(EntryDate, '%Y-%m') = ? AND cluster = ?";
     $stmt = $conn->prepare($currentMonthQuery);
     $stmt->bind_param("ss", $currentMonth, $userCluster);
@@ -55,15 +52,17 @@ if ($userCluster) {
     $currentSpent = $currentData['current_spent'] ?? 0;
     $currentCount = $currentData['current_count'] ?? 0;
     
-    $prevMonthQuery = "SELECT SUM(Amount) as prev_spent, COUNT(*) as prev_count FROM budget_preview WHERE DATE_FORMAT(EntryDate, '%Y-%m') = ? AND cluster = ?";
-    $stmt = $conn->prepare($prevMonthQuery);
-    $stmt->bind_param("ss", $prevMonth, $userCluster);
+    // Previous 3 months data
+    $prevMonthsQuery = "SELECT SUM(Amount) as prev_spent, COUNT(*) as prev_count FROM budget_preview WHERE DATE_FORMAT(EntryDate, '%Y-%m') IN (?, ?, ?) AND cluster = ?";
+    $stmt = $conn->prepare($prevMonthsQuery);
+    $stmt->bind_param("ssss", $prevMonth1, $prevMonth2, $prevMonth3, $userCluster);
     $stmt->execute();
     $prevResult = $stmt->get_result();
     $prevData = $prevResult->fetch_assoc();
     $prevSpent = $prevData['prev_spent'] ?? 0;
     $prevCount = $prevData['prev_count'] ?? 0;
 } else {
+    // Current month data
     $currentMonthQuery = "SELECT SUM(Amount) as current_spent, COUNT(*) as current_count FROM budget_preview WHERE DATE_FORMAT(EntryDate, '%Y-%m') = ?";
     $stmt = $conn->prepare($currentMonthQuery);
     $stmt->bind_param("s", $currentMonth);
@@ -73,15 +72,20 @@ if ($userCluster) {
     $currentSpent = $currentData['current_spent'] ?? 0;
     $currentCount = $currentData['current_count'] ?? 0;
     
-    $prevMonthQuery = "SELECT SUM(Amount) as prev_spent, COUNT(*) as prev_count FROM budget_preview WHERE DATE_FORMAT(EntryDate, '%Y-%m') = ?";
-    $stmt = $conn->prepare($prevMonthQuery);
-    $stmt->bind_param("s", $prevMonth);
+    // Previous 3 months data
+    $prevMonthsQuery = "SELECT SUM(Amount) as prev_spent, COUNT(*) as prev_count FROM budget_preview WHERE DATE_FORMAT(EntryDate, '%Y-%m') IN (?, ?, ?)";
+    $stmt = $conn->prepare($prevMonthsQuery);
+    $stmt->bind_param("ssss", $prevMonth1, $prevMonth2, $prevMonth3);
     $stmt->execute();
     $prevResult = $stmt->get_result();
     $prevData = $prevResult->fetch_assoc();
     $prevSpent = $prevData['prev_spent'] ?? 0;
     $prevCount = $prevData['prev_count'] ?? 0;
 }
+
+// Calculate totals for past 4 months
+$fourMonthsSpent = $currentSpent + $prevSpent;
+$fourMonthsCount = $currentCount + $prevCount;
 
 // Calculate percentage changes
 $spentChange = $prevSpent > 0 ? (($currentSpent - $prevSpent) / $prevSpent) * 100 : 0;
@@ -254,9 +258,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             
                             // Update the quarter row: increase actual by amount, auto-adjust forecast to remaining budget, recompute actual_plus_forecast
                             // MySQL evaluates SET clauses left to right, so later expressions see updated column values
+                            // We need to calculate forecast based on original actual value to avoid compounding errors
                             $updateBudgetQuery = "UPDATE budget_data SET 
                                 actual = COALESCE(actual, 0) + ?,
-                                forecast = COALESCE(budget, 0) - (COALESCE(actual, 0) + ?),
+                                forecast = GREATEST(COALESCE(budget, 0) - COALESCE(actual, 0) - ?, 0),
                                 actual_plus_forecast = COALESCE(actual, 0) + COALESCE(forecast, 0)
                                 WHERE year2 = ? AND category_name = ? AND period_name = ?
                                 AND ? BETWEEN start_date AND end_date";
@@ -265,11 +270,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             if ($userCluster) {
                                 $updateBudgetQuery .= " AND cluster = ?";
                                 $updateStmt = $conn->prepare($updateBudgetQuery);
-                                // Params: 1 double (amount), 1 double (amount), 1 integer (year), 3 strings (categoryName, quarter, transactionDate), 1 string (userCluster)
+                                // Params: 2 doubles (amount), 1 integer (year), 3 strings (categoryName, quarter, transactionDate), 1 string (userCluster)
                                 $updateStmt->bind_param("ddissss", $amount, $amount, $year, $categoryName, $quarter, $transactionDate, $userCluster);
                             } else {
                                 $updateStmt = $conn->prepare($updateBudgetQuery);
-                                // Params: 1 double (amount), 1 double (amount), 1 integer (year), 3 strings (categoryName, quarter, transactionDate)
+                                // Params: 2 doubles (amount), 1 integer (year), 3 strings (categoryName, quarter, transactionDate)
                                 $updateStmt->bind_param("ddisss", $amount, $amount, $year, $categoryName, $quarter, $transactionDate);
                             }
                             
@@ -578,6 +583,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             background: linear-gradient(135deg, var(--light-bg) 0%, #f1f5f9 100%);
             color: var(--dark-text);
             min-height: 100vh;
+            /* Ensure proper mobile layout */
+            overflow-x: hidden;
         }
         
         .heading-font {
@@ -1177,8 +1184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <div class="stat-card-content">
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
-                                <p class="metric-label">Total Spent</p>
-                                <h3 class="metric-value"><i class="fas fa-money-bill-wave text-green-600 mr-1"></i><?php echo number_format($totalSpent, 2); ?></h3>
+                                <p class="metric-label">Total Spent (Past 4 Months)</p>
+                                <h3 class="metric-value"><i class="fas fa-money-bill-wave text-green-600 mr-1"></i><?php echo number_format($fourMonthsSpent, 2); ?></h3>
                             </div>
                             <div class="metric-icon bg-blue-100 text-blue-600">
                                 <i class="fas fa-euro-sign"></i>
@@ -1186,7 +1193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         </div>
                         <div class="metric-change">
                             <div class="metric-change-text">
-                                <span>from <?php echo $startMonthName; ?> to <?php echo $endMonthName; ?></span>
+                                <span>from <?php echo date('F', strtotime('-3 months')); ?> to <?php echo date('F'); ?></span>
                             </div>
                         </div>
                     </div>
@@ -1196,8 +1203,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <div class="stat-card-content">
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
-                                <p class="metric-label">Transactions</p>
-                                <h3 class="metric-value"><?php echo $transactionCount; ?></h3>
+                                <p class="metric-label">Transactions (Past 4 Months)</p>
+                                <h3 class="metric-value"><?php echo $fourMonthsCount; ?></h3>
                             </div>
                             <div class="metric-icon bg-green-100 text-green-600">
                                 <i class="fas fa-exchange-alt"></i>
@@ -1205,13 +1212,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         </div>
                         <div class="metric-change">
                             <div class="metric-change-text">
-                                <span>from <?php echo $startMonthName; ?> to <?php echo $endMonthName; ?></span>
+                                <span>from <?php echo date('F', strtotime('-3 months')); ?> to <?php echo date('F'); ?></span>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Budget Utilization card removed per request -->
+                <!-- Budget Utilization card removed as requested -->
             </div>
         </div>
 
@@ -1263,7 +1270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                                     <input type="date" id="transactionDateInput" class="form-input" required>
                                 </div>
                                 <div>
-                                    <label for="amountInput" class="form-label">Amount (EUR)</label>
+                                    <label for="amountInput" class="form-label">Amount</label>
                                     <input type="number" id="amountInput" class="form-input" placeholder="e.g., 1500" required>
                                 </div>
                                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4">
@@ -1376,9 +1383,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             <th class="py-4 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Budget Heading</th>
                             <th class="py-4 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
                             <th class="py-4 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Partner</th>
-                            <th class="py-4 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ref Number</th>
-                            <th class="py-4 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                            <th class="py-4 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                            <th class="py-4 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Ref Number</th>
+                            <th class="py-4 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                            <th class="py-4 px-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
                             <th class="py-4 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -1667,13 +1674,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             const refNumber = data.pvNumber || '--';
 
             newRow.innerHTML = `
-                <td class="py-4 px-4 text-sm font-medium text-gray-900">${data.budgetHeading}</td>
-                <td class="py-4 px-4 text-sm text-gray-600">${description}</td>
-                <td class="py-4 px-4 text-sm text-gray-600">${data.partner}</td>
-                <td class="py-4 px-4 text-sm text-gray-600">${refNumber}</td>
-                <td class="py-4 px-4 text-sm text-gray-600">${date}</td>
-                <td class="py-4 px-4 text-sm text-gray-600">${amountFormatted}</td>
-                <td class="py-4 px-4 text-sm text-gray-600">
+                <td class="py-4 px-4 text-left text-sm font-medium text-gray-900">${data.budgetHeading}</td>
+                <td class="py-4 px-4 text-left text-sm text-gray-600">${description}</td>
+                <td class="py-4 px-4 text-left text-sm text-gray-600">${data.partner}</td>
+                <td class="py-4 px-4 text-center text-sm text-gray-600">${refNumber}</td>
+                <td class="py-4 px-4 text-center text-sm text-gray-600">${date}</td>
+                <td class="py-4 px-4 text-right text-sm text-gray-600">${amountFormatted}</td>
+                <td class="py-4 px-4 text-left text-sm text-gray-600">
                     <button class="text-blue-600 hover:text-blue-800">
                         <i class="fas fa-eye"></i>
                     </button>
@@ -1683,7 +1690,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             const transactionTableBody = document.getElementById('transactionTableBody');
             transactionTableBody.insertBefore(newRow, transactionTableBody.children[0]);
         }
-        
+
         function loadRecentTransactions() {
             const formData = new FormData();
             formData.append('action', 'get_transactions');
@@ -1694,29 +1701,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    const transactionTableBody = document.getElementById('transactionTableBody');
-                    
-                    // Clear existing rows
-                    transactionTableBody.innerHTML = '';
-                    
-                    // Add transactions from database
+                const transactionTableBody = document.getElementById('transactionTableBody');
+                transactionTableBody.innerHTML = '';
+                
+                if (data.success && data.transactions && data.transactions.length > 0) {
                     data.transactions.forEach(transaction => {
                         const row = document.createElement('tr');
                         row.classList.add('table-row');
                         
-                        const amountFormatted = transaction.Amount ? `<i class="fas fa-money-bill-wave text-green-600 mr-1"></i>${parseFloat(transaction.Amount).toLocaleString('en-US', {minimumFractionDigits: 2})}` : '--';
+                        const amountFormatted = transaction.Amount ? 
+                            `<i class="fas fa-money-bill-wave text-green-600 mr-1"></i>${parseFloat(transaction.Amount).toLocaleString('en-US', {minimumFractionDigits: 2})}` : '--';
+                        
                         const refNumber = transaction.PVNumber || '--';
                         
                         row.innerHTML = `
-                            <td class="py-4 px-4 text-sm font-medium text-gray-900">${transaction.BudgetHeading || '--'}</td>
-                            <td class="py-4 px-4 text-sm text-gray-600">${transaction.Description || '--'}</td>
-                            <td class="py-4 px-4 text-sm text-gray-600">${transaction.Partner || '--'}</td>
-                            <td class="py-4 px-4 text-sm text-gray-600">${refNumber}</td>
-                            <td class="py-4 px-4 text-sm text-gray-600">${transaction.EntryDate || '--'}</td>
-                            <td class="py-4 px-4 text-sm text-gray-600">${amountFormatted}</td>
-                            <td class="py-4 px-4 text-sm text-gray-600">
-                                <button class="text-blue-600 hover:text-blue-800" onclick="viewTransaction(${transaction.PreviewID})">
+                            <td class="py-4 px-4 text-left text-sm font-medium text-gray-900">${transaction.BudgetHeading || '--'}</td>
+                            <td class="py-4 px-4 text-left text-sm text-gray-600">${transaction.Description || '--'}</td>
+                            <td class="py-4 px-4 text-left text-sm text-gray-600">${transaction.Partner || '--'}</td>
+                            <td class="py-4 px-4 text-center text-sm text-gray-600">${refNumber}</td>
+                            <td class="py-4 px-4 text-center text-sm text-gray-600">${transaction.EntryDate || '--'}</td>
+                            <td class="py-4 px-4 text-right text-sm text-gray-600">${amountFormatted}</td>
+                            <td class="py-4 px-4 text-left text-sm text-gray-600">
+                                <button class="text-blue-600 hover:text-blue-800" onclick="viewTransaction(${transaction.id})">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </td>
@@ -1725,11 +1731,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         transactionTableBody.appendChild(row);
                     });
                 } else {
-                    console.error('Failed to load transactions:', data.message);
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="7" class="py-4 px-4 text-center text-sm text-gray-500">No transactions found</td>`;
+                    transactionTableBody.appendChild(row);
                 }
             })
             .catch(error => {
                 console.error('Error loading transactions:', error);
+                const transactionTableBody = document.getElementById('transactionTableBody');
+                transactionTableBody.innerHTML = `<tr><td colspan="7" class="py-4 px-4 text-center text-sm text-red-500">Error loading transactions</td></tr>`;
             });
         }
         
@@ -1936,9 +1946,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 let bodyData = `action=get_field_config&field_name=${encodeURIComponent(fieldName)}`;
                 
                 // Pass user cluster if available
-                <?php if (!empty($userCluster)): ?>
-                bodyData += `&cluster_name=<?php echo urlencode($userCluster); ?>`;
-                <?php endif; ?>
+                const userCluster = <?php echo json_encode($userCluster); ?>;
+                if (userCluster) {
+                    bodyData += `&cluster_name=${encodeURIComponent(userCluster)}`;
+                }
                 
                 fetch('admin_fields_handler.php', {
                     method: 'POST',
