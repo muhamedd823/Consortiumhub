@@ -130,10 +130,88 @@ if (session_status() == PHP_SESSION_NONE) {
         color: rgb(219 234 254);
         border-radius: 0.5rem;
         transition: all 0.2s;
+        font-weight: 500; /* Ensure consistent font weight in sidebar */
+        font-family: 'Inter', sans-serif; /* Ensure sidebar uses Inter font */
+        font-size: 1rem; /* 16px - increased font size */
     }
     
     #sidebar a:hover {
         background-color: rgb(29 78 216);
+        font-weight: 600; /* Slightly bolder on hover */
+        font-size: 1rem; /* Maintain consistent font size on hover */
+    }
+    
+    /* Ensure sidebar container uses Inter font */
+    #sidebar {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Mobile sidebar improvements */
+    @media (max-width: 1023px) {
+        #sidebar {
+            width: 16rem; /* 256px */
+            max-width: 100vw;
+        }
+        
+        .sidebar-fixed {
+            transform: translateX(-100%);
+        }
+        
+        .sidebar-fixed.open,
+        .sidebar-fixed.translate-x-0 {
+            transform: translateX(0);
+        }
+    }
+    
+    /* Ensure sidebar is properly positioned on all screen sizes */
+    #sidebar {
+        will-change: transform;
+    }
+    
+    /* Fix for mobile sidebar overlay */
+    @media (max-width: 1023px) {
+        .sidebar-fixed {
+            z-index: 50;
+        }
+    }
+    
+    /* Ensure sidebar is visible when open on mobile */
+    .sidebar-fixed:not(.-translate-x-full) {
+        transform: translateX(0);
+    }
+    
+    /* Ensure sidebar toggle works on all devices */
+    #sidebarToggleBtn {
+        touch-action: manipulation;
+    }
+    
+    /* Fix for mobile sidebar positioning - ensure proper stacking context */
+    @media (max-width: 1023px) {
+        body {
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        #sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            height: 100vh !important;
+            z-index: 50 !important;
+            transform: translateX(-100%) !important;
+            transition: transform 0.3s ease-in-out !important;
+        }
+        
+        #sidebar.translate-x-0,
+        #sidebar:not(.-translate-x-full) {
+            transform: translateX(0) !important;
+        }
+        
+        /* Ensure main content doesn't interfere with sidebar on mobile */
+        .main-content-flex {
+            width: 100% !important;
+            margin-left: 0 !important;
+        }
     }
     </style>
 </head>
