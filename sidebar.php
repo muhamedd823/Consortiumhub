@@ -1,14 +1,14 @@
 <!-- Sidebar -->
 <aside id="sidebar"
-    class="sidebar-fixed fixed inset-y-0 left-0 z-30 bg-gradient-to-b from-primary-800 to-primary-900 text-white transform -translate-x-full transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 rounded-br-xl shadow-xl">
+    class="sidebar-fixed fixed inset-y-0 left-0 z-50 bg-gradient-to-b from-primary-800 to-primary-900 text-white transform -translate-x-full transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 rounded-br-xl shadow-xl flex flex-col w-64 lg:w-64">
     
     <!-- Header -->
-    <div class="flex items-center justify-center h-20 bg-primary-900 rounded-br-xl shadow-md">
+    <div class="flex items-center justify-center h-20 bg-primary-900 rounded-br-xl shadow-md flex-shrink-0">
         <h1 class="text-2xl font-bold tracking-wide">Consortium Hub</h1>
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 px-4 py-6 space-y-2 mt-4">
+    <nav class="flex-1 px-4 py-6 space-y-2 mt-4 overflow-y-auto">
         
         <!-- Upload Report -->
         <a href="upload_report_section.php"
@@ -75,19 +75,51 @@
                 </svg>
                 <span class="group-hover:text-white">Budget Management</span>
             </a>
+            
+            <!-- Admin - Project Documents -->
+            <a href="admin_project_documents.php"
+                class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+                <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <span class="group-hover:text-white">Project Documents</span>
+            </a>
+            
+            <!-- Admin - Certificates -->
+            <a href="admin_certificates.php"
+                class="flex items-center w-full px-4 py-3 text-primary-100 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200 group">
+                <svg class="w-5 h-5 mr-3 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                <span class="group-hover:text-white">Certificates</span>
+            </a>
         </div>
         <?php endif; ?>
     </nav>
 
     <!-- User Section -->
-    <div class="absolute bottom-0 w-full p-4 border-t border-primary-700">
+    <div class="flex-shrink-0 p-4 border-t border-primary-700 pb-6">
         <div class="flex items-center px-2 py-3">
             <img class="w-10 h-10 rounded-full border-2 border-primary-600"
-                src="https://placehold.co/40x40/1e40af/ffffff?text=JD" alt="User Avatar">
-            <div class="ml-3">
-                <p class="text-sm font-medium text-white">John Doe</p>
-                <p class="text-xs text-primary-300">Administrator</p>
+                src="https://placehold.co/40x40/1e40af/ffffff?text=<?php echo isset($_SESSION['username']) ? substr($_SESSION['username'], 0, 2) : 'U'; ?>" alt="User Avatar">
+            <div class="ml-3 flex-1">
+                <?php if (isset($_SESSION['username'])): ?>
+                    <p class="text-sm font-medium text-white"><?php echo htmlspecialchars($_SESSION['username']); ?></p>
+                    <p class="text-xs text-primary-300"><?php echo isset($_SESSION['role']) ? ucfirst($_SESSION['role']) : 'User'; ?></p>
+                <?php else: ?>
+                    <p class="text-sm font-medium text-white">Guest</p>
+                    <p class="text-xs text-primary-300">User</p>
+                <?php endif; ?>
             </div>
+            <?php if (isset($_SESSION['username'])): ?>
+                <a href="logout.php" class="ml-2 text-primary-300 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 </aside>
