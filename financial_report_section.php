@@ -1169,6 +1169,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <body>
 
 <div class="main-content-flex">
+    <button id="sidebarToggleBtn" class="lg:hidden fixed top-4 left-4 z-40 p-2 rounded-md bg-white border border-gray-200 shadow">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+    </button>
     <div class="content-container">
         <div class="glass-card p-6 md:p-8 card-hover animate-fadeIn mb-8">
             <h1 class="text-4xl font-bold heading-font text-gray-800 mb-2 flex items-center gap-3">
@@ -2181,6 +2186,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         // Load recent transactions from database
         loadRecentTransactions();
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        var sidebar = document.getElementById('sidebar');
+        if (sidebarToggleBtn && sidebar) {
+            sidebarToggleBtn.addEventListener('click', function () {
+                sidebar.classList.toggle('-translate-x-full');
+            });
+        }
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function (e) {
+            var clickedInsideSidebar = e.target.closest && e.target.closest('#sidebar');
+            var clickedToggle = e.target.closest && e.target.closest('#sidebarToggleBtn');
+            if (window.innerWidth < 1024 && sidebar && !clickedInsideSidebar && !clickedToggle) {
+                sidebar.classList.add('-translate-x-full');
+            }
+        });
     });
 </script>
 
